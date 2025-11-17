@@ -103,8 +103,8 @@ class AppointmentService
              $normalizedPurposeName = str_replace('-', ' ', strtolower($purposeName));
             foreach ($allPurposes as $purpose) {
                 // Check system_name and display_name for a match
-                if (str_contains(strtolower($purpose['system_name']), strtolower($purposeName)) || 
-                    str_contains(strtolower($purpose['display_name']), strtolower($purposeName))) {
+                if (str_contains(strtolower($purpose['system_name']), strtolower($normalizedPurposeName)) || 
+                    str_contains(strtolower($purpose['display_name']), strtolower($normalizedPurposeName))) {
                     
                     $foundPurpose = $purpose;
                     break; 
