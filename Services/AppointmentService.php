@@ -286,6 +286,19 @@ class AppointmentService
                 ];
             }
 
+            $targetDate = $data['date'] ?? null;
+             $locationsResult = $this->getLocations($data['purpose_id'], $targetDate);
+            if (!$locationsResult['success']) {
+                return $locationsResult;
+            }
+            $defaultLocationId = null;
+            foreach ($locationsResult['data'] as $location) {
+                if ($location['is_default'] === true) {
+                    $defaultLocationId = $location['location_id'];
+                    break;
+                }
+            }
+
             // Prepare appointment data for external API
             $appointmentPayload = [
                 'customerIdentificationNumber' => $data['account_number'],
@@ -301,7 +314,7 @@ class AppointmentService
                 'appointmentConfirmedDateTime' => null,
                 'customerTimeZone' => $data['customer_timezone'] ?? config('appointment.appointment.default_timezone'),
                 'agentTimeZone' => $data['agent_timezone'] ?? config('appointment.appointment.default_timezone'),
-                'customerLocationId' => $data['location_id'],
+                'customerLocationId' => $data['location_id'] ?? $defaultLocationId,
                 'assignedStaffId' => $data['assigned_staff_id'] ?? null,
             ];
 
@@ -414,7 +427,7 @@ class AppointmentService
      */
     public function cancelAppointment(int $appointmentId, string $accountNumber): array
     {
-        try {
+        try {   
             $appointment = Appointment::where('id', $appointmentId)
                 ->where('account_number', $accountNumber)
                 ->first();
