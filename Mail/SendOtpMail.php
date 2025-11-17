@@ -3,10 +3,7 @@
 namespace AppointmentSystem\Mail;
 
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
-use Illuminate\Mail\Mailables\Content;
-use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
 
 class SendOtpMail extends Mailable
@@ -31,31 +28,16 @@ class SendOtpMail extends Mailable
     }
 
     /**
-     * Get the message envelope.
+     * Build the message.
      *
-     * @return \Illuminate\Mail\Mailables\Envelope
+     * @return $this
      */
-    public function envelope()
+    public function build()
     {
-        return new Envelope(
-            subject: 'Your OTP Code',
-        );
-    }
-
-    /**
-     * Get the message content definition.
-     *
-     * @return \Illuminate\Mail\Mailables\Content
-     */
-    public function content()
-    {
-        // We will create this view file next.
-        // It will look for 'resources/views/mail/otp-email.blade.php'
-        return new Content(
-            markdown: 'appointment-system::mail.otp-email',
-            with: [
-                'otp' => $this->otpCode,
-            ],
-        );
+        return $this->subject('Your OTP Code')
+                    ->markdown('appointment-system::mail.otp-email')
+                    ->with([
+                        'otp' => $this->otpCode,
+                    ]);
     }
 }
