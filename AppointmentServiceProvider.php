@@ -18,6 +18,8 @@ class AppointmentServiceProvider extends ServiceProvider
         $this->app->singleton('appointment.external-api', function ($app) {
             return new Services\ExternalApiService();
         });
+
+        $this->loadViewsFrom(__DIR__.'/resources/views', 'appointment-system');
     }
 
     public function boot()

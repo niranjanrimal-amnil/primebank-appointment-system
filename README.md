@@ -110,7 +110,7 @@ POST /api/appointment-system/otp/verify
 
 ### 4. Get Purposes
 ```bash
-GET /api/appointment-system/appointments/purposes
+GET /api/appointment-system/appointments/purposes/{purposeName}
 ```
 
 **Response:**
@@ -201,6 +201,7 @@ POST /api/appointment-system/appointments/create
     "purpose_id": "uuid",
     "purpose_name": "Account Opening",
     "location_id": "uuid",
+    "customer_timezone":"Asia/Kathmandu",
     "location_name": "Main Branch",
     "assigned_staff_id": "uuid",
     "staff_name": "Staff Name",

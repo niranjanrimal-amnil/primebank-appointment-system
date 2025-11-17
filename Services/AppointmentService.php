@@ -100,6 +100,7 @@ class AppointmentService
             // dd($apiKey->api_key);
             $allPurposes = $this->externalApiService->getPurposeDropdown($apiKey->api_key);
             $foundPurpose = null;
+             $normalizedPurposeName = str_replace('-', ' ', strtolower($purposeName));
             foreach ($allPurposes as $purpose) {
                 // Check system_name and display_name for a match
                 if (str_contains(strtolower($purpose['system_name']), strtolower($purposeName)) || 
@@ -193,10 +194,32 @@ class AppointmentService
                 ];
             }
 
+             $targetDate = $params['date'] ?? null;
+             $locationsResult = $this->getLocations($params['purpose_id'], $targetDate);
+            if (!$locationsResult['success']) {
+                return $locationsResult;
+            }
+            $defaultLocationId = null;
+            foreach ($locationsResult['data'] as $location) {
+                if ($location['is_default'] === true) {
+                    $defaultLocationId = $location['location_id'];
+                    break;
+                }
+            }
+            if (!$defaultLocationId) {
+                return [
+                    'success' => false,
+                    'message' => 'No default location could be found for this purpose.',
+                    'error_code' => 'NO_DEFAULT_LOCATION',
+                ];
+            }
+
+            //  dd($locationsResult);
+
             $slots = $this->externalApiService->getAppointmentSlots(
                 $apiKey,
                 $params['date'],
-                $params['location_id'],
+                $defaultLocationId,
                 $params['purpose_id'],
                 $params['timezone'] ?? config('appointment.appointment.default_timezone'),
                 $params['assigned_staff_ids'] ?? []
