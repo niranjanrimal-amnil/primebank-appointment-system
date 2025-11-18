@@ -6,7 +6,10 @@ use Illuminate\Database\Eloquent\Model;
 use Carbon\Carbon;
 
 class OtpLog extends Model
+
+
 {
+    protected $table = 'otp_logs';
     protected $fillable = [
         'account_number',
         'otp_code',
