@@ -316,6 +316,7 @@ class AppointmentService
                 'agentTimeZone' => $data['agent_timezone'] ?? config('appointment.appointment.default_timezone'),
                 'customerLocationId' => $data['location_id'] ?? $defaultLocationId,
                 'assignedStaffId' => $data['assigned_staff_id'] ?? null,
+                'referenceIdentifier' => 'APP-' . strtoupper(uniqid()),
             ];
 
             // Create appointment in external system
