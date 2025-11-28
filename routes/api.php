@@ -20,7 +20,7 @@ Route::prefix('appointment-system')->group(function () {
     Route::prefix('appointments')->group(function () {
         // Get dropdown data
         Route::get('purposes/{purposeName?}', [AppointmentController::class, 'getPurposes'])->name('appointment.purposes');
-        // Route::get('locations/{purposeId}', [AppointmentController::class, 'getLocations'])->name('appointment.locations');
+        Route::get('locations/{purposeId}', [AppointmentController::class, 'getLocations'])->name('appointment.locations');
         Route::get('users/{purposeId}', [AppointmentController::class, 'getUsers'])->name('appointment.users');
         
         // Get available slots

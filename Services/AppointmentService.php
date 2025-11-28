@@ -23,14 +23,20 @@ class AppointmentService
     public function getLocations(string $purposeId, ?string $targetDate = null): array
     {
         try {
-
+            // --- SET DEFAULT DATE ---
             if (is_null($targetDate)) {
-                $targetDate = Carbon::today()->toDateString(); 
+                $targetDate = Carbon::today()->toDateString(); // Set default to today's date
             }
+            // --- END SET DEFAULT DATE ---
 
+            // --- VALIDATION ADDED ---
+            // Check if targetDate is provided and if it's in the past
             if ($targetDate) {
                 try {
+                    // Use startOfDay() to ignore time and compare dates only
                     $parsedDate = Carbon::parse($targetDate)->startOfDay();
+
+                    // Carbon::today() gets the start of the current day
                     if ($parsedDate->isBefore(Carbon::today())) {
                         return [
                             'success' => false,
@@ -39,6 +45,7 @@ class AppointmentService
                         ];
                     }
                 } catch (\Exception $e) {
+                    // Handle invalid date string format
                     return [
                         'success' => false,
                         'message' => 'Invalid date format for target_date. Use YYYY-MM-DD.',
@@ -46,25 +53,49 @@ class AppointmentService
                     ];
                 }
             }
+            // --- END VALIDATION ---
+
+            // This now correctly fetches the plain-text key
             $apiKey = ApiKey::getByPurposeId($purposeId);
-            
+
             if (!$apiKey) {
                 return [
                     'success' => false,
-                    'message' => 'API key not found for this purpose',
+                    'message' => 'API key not found for this purpose name',
                     'error_code' => 'API_KEY_NOT_FOUND',
                 ];
             }
 
-            $locations = $this->externalApiService->getLocationDropdown($apiKey, $purposeId, $targetDate);
-                        $formattedLocations = array_map(function ($location) {
+            // The $apiKey is passed to the external service
+            // We use the key AND the purpose_id from the $apiKey object
+            $locations = $this->externalApiService->getLocationDropdown(
+                $apiKey,
+                $purposeId,
+                $targetDate
+            );
+
+            // --- FILTER LOGIC: Priority to Default Locations ---
+            // 1. Filter for locations where is_default is true
+            $defaultLocations = array_filter($locations, function ($location) {
+                return isset($location['is_default']) && $location['is_default'] === true;
+            });
+
+            // 2. If default locations exist, use them. Otherwise, keep all locations.
+            $finalLocations = !empty($defaultLocations) ? $defaultLocations : $locations;
+
+            // --- FORMATTING LOGIC ---
+            // Remove created_at from response
+            $formattedLocations = array_map(function ($location) {
                 unset($location['created_at']);
                 return $location;
-            }, $locations);
+            }, $finalLocations);
+            // ------------------------------------------
 
             return [
                 'success' => true,
-                'data' => $formattedLocations,
+                // array_values is important here because array_filter preserves keys (e.g. index 2),
+                // but JSON arrays should be indexed sequentially (0, 1, 2...)
+                'data' => array_values($formattedLocations),
             ];
         } catch (\Exception $e) {
             Log::error('Get Locations Error', [
@@ -88,9 +119,9 @@ class AppointmentService
         try {
             // Get any active API key to fetch purposes
             $apiKey = ApiKey::where('purpose_name', $purposeName)
-                            ->where('is_active', true)
-                            ->first();          
-        if (!$apiKey) {
+                ->where('is_active', true)
+                ->first();
+            if (!$apiKey) {
                 return [
                     'success' => false,
                     'message' => 'No active API key found',
@@ -100,14 +131,16 @@ class AppointmentService
             // dd($apiKey->api_key);
             $allPurposes = $this->externalApiService->getPurposeDropdown($apiKey->api_key);
             $foundPurpose = null;
-             $normalizedPurposeName = str_replace('-', ' ', strtolower($purposeName));
+            $normalizedPurposeName = str_replace('-', ' ', strtolower($purposeName));
             foreach ($allPurposes as $purpose) {
                 // Check system_name and display_name for a match
-                if (str_contains(strtolower($purpose['system_name']), strtolower($normalizedPurposeName)) || 
-                    str_contains(strtolower($purpose['display_name']), strtolower($normalizedPurposeName))) {
-                    
+                if (
+                    str_contains(strtolower($purpose['system_name']), strtolower($normalizedPurposeName)) ||
+                    str_contains(strtolower($purpose['display_name']), strtolower($normalizedPurposeName))
+                ) {
+
                     $foundPurpose = $purpose;
-                    break; 
+                    break;
                 }
             }
             if ($foundPurpose) {
@@ -141,7 +174,7 @@ class AppointmentService
     {
         try {
             $apiKey = ApiKey::getByPurposeId($purposeId);
-            
+
             if (!$apiKey) {
                 return [
                     'success' => false,
@@ -151,12 +184,12 @@ class AppointmentService
             }
 
             $allUsers = $this->externalApiService->getUserDropdown($apiKey);
-                        $activeUsers = array_filter($allUsers, function ($user) {
+            $activeUsers = array_filter($allUsers, function ($user) {
                 return $user['is_active'] === true;
             });
 
-                        $formattedUsers = array_map(function ($user) {
-                unset($user['created_at']); 
+            $formattedUsers = array_map(function ($user) {
+                unset($user['created_at']);
                 return $user;
             }, $activeUsers);
 
@@ -185,7 +218,7 @@ class AppointmentService
     {
         try {
             $apiKey = ApiKey::getByPurposeId($params['purpose_id']);
-            
+
             if (!$apiKey) {
                 return [
                     'success' => false,
@@ -194,8 +227,8 @@ class AppointmentService
                 ];
             }
 
-             $targetDate = $params['date'] ?? null;
-             $locationsResult = $this->getLocations($params['purpose_id'], $targetDate);
+            $targetDate = $params['date'] ?? null;
+            $locationsResult = $this->getLocations($params['purpose_id'], $targetDate);
             if (!$locationsResult['success']) {
                 return $locationsResult;
             }
@@ -206,6 +239,8 @@ class AppointmentService
                     break;
                 }
             }
+
+
             if (!$defaultLocationId) {
                 return [
                     'success' => false,
@@ -219,7 +254,7 @@ class AppointmentService
             $slots = $this->externalApiService->getAppointmentSlots(
                 $apiKey,
                 $params['date'],
-                $defaultLocationId,
+                $params['location_id'] ?? $defaultLocationId,
                 $params['purpose_id'],
                 $params['timezone'] ?? config('appointment.appointment.default_timezone'),
                 $params['assigned_staff_ids'] ?? []
@@ -249,7 +284,7 @@ class AppointmentService
     public function createAppointment(array $data): array
     {
         DB::beginTransaction();
-        
+
         try {
             // Validate OTP is verified
             $otpLog = \AppointmentSystem\Models\OtpLog::where('account_number', $data['account_number'])
@@ -276,7 +311,7 @@ class AppointmentService
             }
 
             $apiKey = ApiKey::getByPurposeId($data['purpose_id']);
-            
+
             if (!$apiKey) {
                 DB::rollBack();
                 return [
@@ -287,7 +322,7 @@ class AppointmentService
             }
 
             $targetDate = $data['date'] ?? null;
-             $locationsResult = $this->getLocations($data['purpose_id'], $targetDate);
+            $locationsResult = $this->getLocations($data['purpose_id'], $targetDate);
             if (!$locationsResult['success']) {
                 return $locationsResult;
             }
@@ -365,7 +400,7 @@ class AppointmentService
             ];
         } catch (\Exception $e) {
             DB::rollBack();
-            
+
             Log::error('Create Appointment Error', [
                 'data' => $data,
                 'error' => $e->getMessage(),
@@ -386,7 +421,7 @@ class AppointmentService
     {
         try {
             $query = Appointment::byAccountNumber($accountNumber);
-            
+
             if ($status) {
                 $query->where('status', $status);
             }
@@ -428,7 +463,7 @@ class AppointmentService
      */
     public function cancelAppointment(int $appointmentId, string $accountNumber): array
     {
-        try {   
+        try {
             $appointment = Appointment::where('id', $appointmentId)
                 ->where('account_number', $accountNumber)
                 ->first();
